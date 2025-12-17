@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Indexer Service - Indexes blockchain events and serves API
   indexer:

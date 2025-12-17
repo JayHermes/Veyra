@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { MarketsManager } from "@/lib/dashboard/managers/MarketsManager";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, FileText, Copy, CheckCircle2 } from "lucide-react";
+import { ExternalLink, FileText, Copy, CheckCircle2, Loader2 } from "lucide-react";
 import type { MarketSummary } from "@/lib/dashboard/types";
 import { CreateMarketDialog } from "@/components/markets/CreateMarketDialog";
 import { TradeDialog } from "@/components/markets/TradeDialog";
@@ -18,7 +18,7 @@ import { ResolveMarketDialog } from "@/components/markets/ResolveMarketDialog";
 
 import { useSearchParams } from "next/navigation";
 
-export default function MarketsPage(): React.ReactElement {
+function MarketsContent(): React.ReactElement {
 	const searchParams = useSearchParams();
 	const [platformFilter, setPlatformFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
@@ -433,6 +433,22 @@ export default function MarketsPage(): React.ReactElement {
 				</DialogContent>
 			</Dialog>
 		</div>
+	);
+}
+
+export default function MarketsPage(): React.ReactElement {
+	return (
+		<Suspense fallback={
+			<div className="space-y-4 sm:space-y-6">
+				<h1 className="text-xl sm:text-2xl font-semibold">Markets</h1>
+				<div className="py-8 text-center">
+					<Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+					<p className="text-muted-foreground text-sm">Loading...</p>
+				</div>
+			</div>
+		}>
+			<MarketsContent />
+		</Suspense>
 	);
 }
 

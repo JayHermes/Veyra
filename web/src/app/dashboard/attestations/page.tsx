@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AttestationsFeedViewModel } from "@/lib/dashboard/viewmodels/AttestationsFeedViewModel";
 import { AttestationManager } from "@/lib/dashboard/managers/AttestationManager";
@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Filter, ExternalLink, Copy, Shield, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import type { Proof } from "@/lib/dashboard/types";
 
-export default function AttestationsPage(): React.ReactElement {
+function AttestationsContent(): React.ReactElement {
 	const [vm] = useState(() => new AttestationsFeedViewModel(new AttestationManager()));
 	const [proofs, setProofs] = useState<Proof[]>([]);
 	const [selectedProof, setSelectedProof] = useState<Proof | null>(null);
@@ -343,6 +343,22 @@ export default function AttestationsPage(): React.ReactElement {
 				</DialogContent>
 			</Dialog>
 		</div>
+	);
+}
+
+export default function AttestationsPage(): React.ReactElement {
+	return (
+		<Suspense fallback={
+			<div className="space-y-4 sm:space-y-6">
+				<h1 className="text-xl sm:text-2xl font-semibold">Proof Explorer</h1>
+				<div className="py-8 text-center">
+					<Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+					<p className="text-muted-foreground text-sm">Loading...</p>
+				</div>
+			</div>
+		}>
+			<AttestationsContent />
+		</Suspense>
 	);
 }
 
