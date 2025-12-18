@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: veyra-indexer
+    env: docker
+    dockerfilePath: ./indexer/Dockerfile
+    dockerContext: ./indexer
+    envVars:
+      - key: PORT
+        value: 4001
+      - key: RUN_INDEXER
+        value: 0
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: FACTORY
+        sync: false
+      - key: ORACLE_ADDRESS
+        sync: false
+      - key: ADAPTER_ADDRESS
+        sync: false
+
+  - type: web
+    name: veyra-web
+    env: docker
+    dockerfilePath: ./web/Dockerfile
+    dockerContext: ./web
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_INDEXER_URL
+        fromService:
+          type: web
+          name: veyra-indexer
+          property: host
+      - key: NEXT_PUBLIC_SEPOLIA_RPC_URL
+        sync: false
+      - key: NEXT_PUBLIC_FACTORY_ADDRESS
+        sync: false
+      - key: NEXT_PUBLIC_ORACLE_ADDRESS
+        sync: false
+      - key: NEXT_PUBLIC_ADAPTER_ADDRESS
+        sync: false
+
+

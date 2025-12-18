@@ -1,0 +1,58 @@
+services:
+  # Indexer Service - Indexes blockchain events and serves API
+  indexer:
+    build:
+      context: ./indexer
+      dockerfile: Dockerfile
+    container_name: veyra-indexer
+    ports:
+      - "4001:4001"
+    command: node dist/server.js
+    environment:
+      - PORT=4001
+      - RUN_INDEXER=${RUN_INDEXER:-0}
+      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL}
+      - FACTORY=${FACTORY}
+      - ORACLE_ADDRESS=${ORACLE_ADDRESS}
+      - ADAPTER_ADDRESS=${ADAPTER_ADDRESS}
+      - UMA_ADAPTER_ADDRESS=${UMA_ADAPTER_ADDRESS}
+      - GNOSIS_ADAPTER_ADDRESS=${GNOSIS_ADAPTER_ADDRESS}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web Frontend - Next.js application
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_INDEXER_URL: ${NEXT_PUBLIC_INDEXER_URL}
+        NEXT_PUBLIC_SEPOLIA_RPC_URL: ${NEXT_PUBLIC_SEPOLIA_RPC_URL}
+        NEXT_PUBLIC_FACTORY_ADDRESS: ${NEXT_PUBLIC_FACTORY_ADDRESS}
+        NEXT_PUBLIC_ORACLE_ADDRESS: ${NEXT_PUBLIC_ORACLE_ADDRESS}
+        NEXT_PUBLIC_ADAPTER_ADDRESS: ${NEXT_PUBLIC_ADAPTER_ADDRESS}
+        NEXT_PUBLIC_TEST_TOKEN_ADDRESS: ${NEXT_PUBLIC_TEST_TOKEN_ADDRESS}
+    container_name: veyra-web
+    ports:
+      - "3000:3000"
+    environment:
+      - INDEXER_URL=http://indexer:4001
+      - NEXT_PUBLIC_INDEXER_URL=${NEXT_PUBLIC_INDEXER_URL}
+      - NEXT_PUBLIC_SEPOLIA_RPC_URL=${NEXT_PUBLIC_SEPOLIA_RPC_URL}
+      - NEXT_PUBLIC_FACTORY_ADDRESS=${NEXT_PUBLIC_FACTORY_ADDRESS}
+      - NEXT_PUBLIC_ORACLE_ADDRESS=${NEXT_PUBLIC_ORACLE_ADDRESS}
+      - NEXT_PUBLIC_ADAPTER_ADDRESS=${NEXT_PUBLIC_ADAPTER_ADDRESS}
+      - NEXT_PUBLIC_TEST_TOKEN_ADDRESS=${NEXT_PUBLIC_TEST_TOKEN_ADDRESS}
+    depends_on:
+      - indexer
+    restart: unless-stopped
+
+networks:
+  default:
+    name: veyra-network
+
+

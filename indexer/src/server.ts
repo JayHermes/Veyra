@@ -24,6 +24,24 @@ process.on("unhandledRejection", (reason, promise) => {
 	// Keep running
 });
 
+app.get("/", (_req: Request, res: Response) => {
+	res.json({
+		service: "Veyra Indexer API",
+		version: "0.1.0",
+		endpoints: {
+			health: "/health",
+			markets: "/markets",
+			market: "/markets/:address",
+			positions: "/positions/:trader",
+			resolutions: "/resolutions/:market",
+			kpis: "/kpis",
+			operators: "/operators",
+			jobs: "/jobs",
+			attestations: "/attestations"
+		}
+	});
+});
+
 app.get("/health", (_req: Request, res: Response) => res.json({ ok: true }));
 
 app.get("/markets", (_req: Request, res: Response) => {
