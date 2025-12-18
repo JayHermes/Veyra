@@ -1,0 +1,3 @@
+# Railway ignore file - forces Docker usage
+# Railway will use Docker when it detects Dockerfile or docker-compose.yml
+
