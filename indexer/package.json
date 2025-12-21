@@ -6,7 +6,8 @@
 	"scripts": {
 		"dev": "ts-node src/server.ts",
 		"start": "node dist/server.js",
-		"build": "tsc -p ."
+		"build": "tsc -p .",
+		"scan-historical": "ts-node src/historical-scan.ts"
 	},
 	"dependencies": {
 		"better-sqlite3": "^12.4.1",
