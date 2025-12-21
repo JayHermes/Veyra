@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateMarket } from "@/lib/contracts/hooks";
 import { useWallet } from "@/lib/wallet/walletContext";
-import { CONTRACT_ADDRESSES, getCurrentNetwork } from "@/lib/contracts/config";
+import { CONTRACT_ADDRESSES, getCurrentNetwork, switchToSepolia } from "@/lib/contracts/config";
 import { TEST_TOKEN_ADDRESS, getMarketFactoryContract, getSigner } from "@/lib/contracts/contracts";
 import { parseContractError } from "@/lib/utils";
 import { ethers } from "ethers";
