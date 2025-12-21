@@ -93,12 +93,26 @@ export function getProvider(network: "sepolia" | "baseSepolia" | "local" = "sepo
  * Get signer from wallet provider
  */
 export async function getSigner(): Promise<ethers.JsonRpcSigner | null> {
-	if (typeof window === "undefined" || !window.ethereum) {
+	if (typeof window === "undefined") {
+		return null;
+	}
+
+	// Safely get ethereum provider
+	const getEthereum = () => {
+		try {
+			return (window as any).ethereum;
+		} catch (e) {
+			return null;
+		}
+	};
+
+	const ethereum = getEthereum();
+	if (!ethereum) {
 		return null;
 	}
 
 	try {
-		const provider = new ethers.BrowserProvider(window.ethereum);
+		const provider = new ethers.BrowserProvider(ethereum);
 		return await provider.getSigner();
 	} catch {
 		return null;

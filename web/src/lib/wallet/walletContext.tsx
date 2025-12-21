@@ -22,10 +22,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }): Rea
 			return;
 		}
 
+		// Wait for ethereum to be available (handles MetaMask initialization)
 		const checkConnection = async () => {
-			if (typeof window !== "undefined" && window.ethereum) {
+			// Use a safer way to access ethereum
+			const getEthereum = () => {
+				if (typeof window === "undefined") return null;
 				try {
-					const accounts = (await window.ethereum.request({ method: "eth_accounts" })) as string[];
+					// Try to access ethereum safely
+					return (window as any).ethereum;
+				} catch (e) {
+					return null;
+				}
+			};
+
+			// Wait a bit for MetaMask to initialize
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			const ethereum = getEthereum();
+			if (ethereum) {
+				try {
+					const accounts = (await ethereum.request({ method: "eth_accounts" })) as string[];
 					if (accounts && accounts.length > 0) {
 						setAddress(accounts[0]);
 						setIsExplicitlyDisconnected(false); // Reset flag when wallet is reconnected
@@ -39,7 +55,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }): Rea
 		checkConnection();
 
 		// Listen for account changes
-		if (typeof window !== "undefined" && window.ethereum) {
+		const getEthereum = () => {
+			if (typeof window === "undefined") return null;
+			try {
+				return (window as any).ethereum;
+			} catch (e) {
+				return null;
+			}
+		};
+
+		const ethereum = getEthereum();
+		if (ethereum) {
 			const handleAccountsChanged = (accounts: unknown) => {
 				const accountList = accounts as string[];
 				if (accountList && accountList.length > 0) {
@@ -50,16 +76,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }): Rea
 				}
 			};
 
-			window.ethereum.on("accountsChanged", handleAccountsChanged);
+			try {
+				ethereum.on("accountsChanged", handleAccountsChanged);
 
-			return () => {
-				window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
-			};
+				return () => {
+					try {
+						ethereum.removeListener("accountsChanged", handleAccountsChanged);
+					} catch (e) {
+						// Ignore errors during cleanup
+					}
+				};
+			} catch (e) {
+				// Ignore if event listener can't be set
+			}
 		}
 	}, [isExplicitlyDisconnected]);
 
 	const connect = useCallback(async () => {
-		if (typeof window === "undefined" || !window.ethereum) {
+		// Safely get ethereum provider
+		const getEthereum = () => {
+			if (typeof window === "undefined") return null;
+			try {
+				return (window as any).ethereum;
+			} catch (e) {
+				return null;
+			}
+		};
+
+		const ethereum = getEthereum();
+		if (!ethereum) {
 			alert("Please install MetaMask or another Ethereum wallet");
 			return;
 		}
@@ -68,7 +113,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }): Rea
 			// Reset the disconnect flag when connecting
 			setIsExplicitlyDisconnected(false);
 			
-			const accounts = (await window.ethereum.request({
+			const accounts = (await ethereum.request({
 				method: "eth_requestAccounts",
 			})) as string[];
 			if (accounts && accounts.length > 0) {
@@ -87,7 +132,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }): Rea
 		setIsExplicitlyDisconnected(true); // Set flag to prevent auto-reconnection
 		
 		// Try to revoke permissions if MetaMask supports it
-		if (typeof window !== "undefined" && window.ethereum) {
+		const getEthereum = () => {
+			if (typeof window === "undefined") return null;
+			try {
+				return (window as any).ethereum;
+			} catch (e) {
+				return null;
+			}
+		};
+
+		const ethereum = getEthereum();
+		if (ethereum) {
 			try {
 				// Some wallets support wallet_revokePermissions, but it's not standard
 				// We'll just clear our local state and prevent auto-reconnection

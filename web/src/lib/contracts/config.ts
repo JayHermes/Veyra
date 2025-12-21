@@ -50,12 +50,26 @@ export const CONTRACT_ADDRESSES = {
  * Get the current network from the wallet
  */
 export async function getCurrentNetwork(): Promise<NetworkName | null> {
-	if (typeof window === "undefined" || !window.ethereum) {
+	if (typeof window === "undefined") {
+		return null;
+	}
+
+	// Safely get ethereum provider
+	const getEthereum = () => {
+		try {
+			return (window as any).ethereum;
+		} catch (e) {
+			return null;
+		}
+	};
+
+	const ethereum = getEthereum();
+	if (!ethereum) {
 		return null;
 	}
 
 	try {
-		const chainId = await window.ethereum.request({
+		const chainId = await ethereum.request({
 			method: "eth_chainId",
 		});
 		const chainIdNumber = parseInt(chainId as string, 16);
@@ -80,12 +94,26 @@ export async function getCurrentNetwork(): Promise<NetworkName | null> {
  * Switch to Sepolia network
  */
 export async function switchToSepolia(): Promise<boolean> {
-	if (typeof window === "undefined" || !window.ethereum) {
+	if (typeof window === "undefined") {
+		return false;
+	}
+
+	// Safely get ethereum provider
+	const getEthereum = () => {
+		try {
+			return (window as any).ethereum;
+		} catch (e) {
+			return null;
+		}
+	};
+
+	const ethereum = getEthereum();
+	if (!ethereum) {
 		return false;
 	}
 
 	try {
-		await window.ethereum.request({
+		await ethereum.request({
 			method: "wallet_switchEthereumChain",
 			params: [{ chainId: `0x${NETWORKS.sepolia.chainId.toString(16)}` }],
 		});
@@ -94,7 +122,7 @@ export async function switchToSepolia(): Promise<boolean> {
 		// If chain doesn't exist, add it
 		if (error.code === 4902) {
 			try {
-				await window.ethereum.request({
+				await ethereum.request({
 					method: "wallet_addEthereumChain",
 					params: [
 						{
