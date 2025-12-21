@@ -102,13 +102,32 @@ export function CreateMarketDialog({ onSuccess }: CreateMarketDialogProps): Reac
 		}
 
 		try {
+			// Check and switch network BEFORE getting signer
+			const network = await getCurrentNetwork();
+			if (!network || network !== "sepolia") {
+				setError("Please switch to Sepolia network. Switching now...");
+				const switched = await switchToSepolia();
+				if (!switched) {
+					setError("Failed to switch network. Please manually switch to Sepolia in MetaMask.");
+					setIsLoading(false);
+					return;
+				}
+				// Wait a moment for network switch
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				// Update current network
+				const newNetwork = await getCurrentNetwork();
+				setCurrentNetwork(newNetwork || "sepolia");
+			}
+
 			const signer = await getSigner();
 			if (!signer) {
 				setError("Wallet not connected or signer not available.");
 				setIsLoading(false);
 				return;
 			}
-			const factory = getMarketFactoryContract(signer);
+			
+			// Use sepolia network for contract
+			const factory = getMarketFactoryContract(signer, "sepolia");
 			
 			// Always use createMarketWithOracle to support custom/Gemini oracles
 			// Convert feeBps to number
