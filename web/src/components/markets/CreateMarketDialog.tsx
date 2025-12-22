@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateMarket } from "@/lib/contracts/hooks";
 import { useWallet } from "@/lib/wallet/walletContext";
 import { CONTRACT_ADDRESSES, getCurrentNetwork, switchToSepolia } from "@/lib/contracts/config";
-import { TEST_TOKEN_ADDRESS, getMarketFactoryContract, getSigner } from "@/lib/contracts/contracts";
+import { TEST_TOKEN_ADDRESS, getMarketFactoryContract, getSigner, MarketFactoryABI } from "@/lib/contracts/contracts";
 import { parseContractError } from "@/lib/utils";
 import { ethers } from "ethers";
 import { Loader2, Plus } from "lucide-react";
