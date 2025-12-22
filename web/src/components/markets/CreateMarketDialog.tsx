@@ -161,7 +161,34 @@ export function CreateMarketDialog({ onSuccess }: CreateMarketDialogProps): Reac
 			);
 			
 			setTxHash(tx.hash);
-			await tx.wait();
+			const receipt = await tx.wait();
+			
+			// Extract market address from MarketDeployed event
+			let marketAddress: string | null = null;
+			if (receipt && receipt.logs) {
+				try {
+					const iface = factory.interface;
+					const marketDeployedEvent = receipt.logs
+						.map((log: any) => {
+							try {
+								return iface.parseLog(log);
+							} catch {
+								return null;
+							}
+						})
+						.find((e: any) => e && e.name === "MarketDeployed");
+					
+					if (marketDeployedEvent && marketDeployedEvent.args) {
+						// MarketDeployed event args: marketId, market, vault, question, endTime, feeBps, flatFee, feeRecipient
+						marketAddress = marketDeployedEvent.args[1]; // market is the second argument
+						console.log("✅ Market created at address:", marketAddress);
+					} else {
+						console.warn("⚠️ MarketDeployed event not found in receipt logs");
+					}
+				} catch (err) {
+					console.error("❌ Error extracting market address from receipt:", err);
+				}
+			}
 			
 			setOpen(false);
 			// Reset form
@@ -173,7 +200,8 @@ export function CreateMarketDialog({ onSuccess }: CreateMarketDialogProps): Reac
 			setOracleProvider("gemini"); // Reset to default
 			setOracleAddress(""); // Will be reset by useEffect
 			
-			if (onSuccess) onSuccess(tx.hash); // Pass tx hash or market address if available from event
+			// Pass market address if available, otherwise tx hash
+			if (onSuccess) onSuccess(marketAddress || tx.hash);
 		} catch (err: any) {
 			console.error("Error creating market:", err);
 			// Handle specific custom errors
