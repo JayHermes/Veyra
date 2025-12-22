@@ -56,11 +56,16 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 	for (const event of events) {
 		try {
 			// Type guard: ensure this is an EventLog with args
+			// In ethers v6, queryFilter returns (Log | EventLog)[]
+			// We need EventLog which has the args property
 			if (!("args" in event)) {
 				console.error("Event missing args, skipping");
 				continue;
 			}
-			const { marketId, market, vault, question, endTime } = event.args as any;
+			// Now TypeScript knows event has args, but we need to assert the type
+			// Use 'as any' to bypass strict typing since we've verified args exists
+			const eventWithArgs = event as any;
+			const { marketId, market, vault, question, endTime } = eventWithArgs.args;
 			
 			// Check if market already exists
 			const existing = db.prepare(`SELECT address FROM markets WHERE address=?`).get(market);
@@ -80,7 +85,7 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 				"",
 				vault,
 				0,
-				event.blockNumber * 1000 // Approximate timestamp from block number
+				eventWithArgs.blockNumber * 1000 // Approximate timestamp from block number
 			);
 
 			console.log(`Indexed market: ${market} - "${question}"`);
