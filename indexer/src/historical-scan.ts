@@ -55,6 +55,11 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 
 	for (const event of events) {
 		try {
+			// Type guard: ensure this is an EventLog with args
+			if (!("args" in event)) {
+				console.error("Event missing args, skipping");
+				continue;
+			}
 			const { marketId, market, vault, question, endTime } = event.args as any;
 			
 			// Check if market already exists
