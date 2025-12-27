@@ -632,8 +632,12 @@ async function startAVSService() {
 			console.warn(`[AVS] ⚠️  Could not query operator weight:`, error.message);
 		}
 	} else {
-		const totalWeight = await adapter.getTotalOperatorWeight();
-		console.log(`[AVS] Total AVS operator weight: ${totalWeight.toString()}`);
+		try {
+			const totalWeight = await adapter.getTotalOperatorWeight();
+			console.log(`[AVS] Total AVS operator weight: ${totalWeight.toString()}`);
+		} catch (error: any) {
+			console.warn(`[AVS] ⚠️  Could not query total operator weight:`, error.message);
+		}
 	}
 	
 	console.log(`[AVS] Listening for VerificationRequested events on ${ADAPTER_ADDRESS}...`);
