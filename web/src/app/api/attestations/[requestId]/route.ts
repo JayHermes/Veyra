@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 const INDEXER_URL = process.env.INDEXER_URL || process.env.NEXT_PUBLIC_INDEXER_URL || "http://localhost:4001";
 
 export async function GET(
-	request: Request,
-	{ params }: { params: { requestId: string } }
+	request: NextRequest,
+	{ params }: { params: Promise<{ requestId: string }> }
 ) {
 	try {
-		const { requestId } = params;
+		const { requestId } = await params;
 		const res = await fetch(`${INDEXER_URL}/attestations/${requestId}`, {
 			cache: "no-store",
 		});
