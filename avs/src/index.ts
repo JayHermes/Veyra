@@ -599,15 +599,21 @@ async function startAVSService() {
 	const wallet = new ethers.Wallet(AVS_PRIVATE_KEY, provider);
 	const adapter = new ethers.Contract(ADAPTER_ADDRESS, ADAPTER_ABI, provider) as unknown as VeyraOracleAVSContract;
 	
-	// Verify operator is registered to AVS via EigenLayer
-	const isRegistered = await adapter.isOperatorRegistered(wallet.address);
-	if (!isRegistered) {
-		console.error(`[AVS] ❌ Operator ${wallet.address} is not registered to this AVS on EigenLayer!`);
-		console.error("[AVS] Please register as an operator on EigenLayer and opt-in to this AVS");
-		process.exit(1);
+	// Verify operator is registered to AVS (gracefully handle if not registered)
+	try {
+		const isRegistered = await adapter.isOperatorRegistered(wallet.address);
+		if (!isRegistered) {
+			console.warn(`[AVS] ⚠️  Operator ${wallet.address} is not registered to this AVS!`);
+			console.warn("[AVS] Service will continue, but operator must be registered to process requests.");
+			console.warn("[AVS] Register operator by calling the adapter contract's registerOperator function.");
+		} else {
+			console.log(`[AVS] ✅ Operator registered to AVS: ${wallet.address}`);
+		}
+	} catch (error: any) {
+		console.warn(`[AVS] ⚠️  Could not verify operator registration: ${error.message}`);
+		console.warn("[AVS] Service will continue, but operator registration status is unknown.");
+		console.warn("[AVS] Make sure the operator is registered to process requests.");
 	}
-	
-	console.log(`[AVS] ✅ Operator registered to AVS: ${wallet.address}`);
 	
 	// Check operator weight from DelegationManager
 	if (DELEGATION_MANAGER_ADDRESS) {
