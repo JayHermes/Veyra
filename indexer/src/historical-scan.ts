@@ -120,7 +120,9 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 }
 
 // If run directly, scan from a reasonable starting point
-if (require.main === module) {
+// ES module equivalent of require.main === module
+// Check if this file is being run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('historical-scan.js')) {
 	const FROM_BLOCK = process.env.SCAN_FROM_BLOCK 
 		? parseInt(process.env.SCAN_FROM_BLOCK) 
 		: 0; // Default: scan from block 0 (or set to Factory deployment block)
