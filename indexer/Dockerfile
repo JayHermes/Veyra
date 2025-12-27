@@ -1,4 +1,7 @@
 # Indexer Dockerfile
+# IMPORTANT: Railway must build from ROOT directory with Dockerfile path: indexer/Dockerfile
+# In Railway Settings → Build → Set Root Directory to empty (or /) and Dockerfile Path to: indexer/Dockerfile
+
 FROM node:20-alpine
 
 # Install build dependencies for native modules
@@ -6,9 +9,9 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY pnpm-lock.yaml* ./
+# Copy package files (when building from root, use indexer/ prefix)
+COPY indexer/package*.json ./
+COPY indexer/pnpm-lock.yaml* ./
 
 # Install pnpm and dependencies
 RUN npm install -g pnpm && \
@@ -17,9 +20,13 @@ RUN npm install -g pnpm && \
 # Rebuild native modules for Alpine Linux
 RUN npm rebuild better-sqlite3
 
-# Copy source code (excluding node_modules via .dockerignore)
-COPY src ./src
-COPY tsconfig.json ./
+# Copy protocol artifacts (contract ABIs) - required for event listening
+# This assumes build context is root directory
+COPY protocol/artifacts /protocol/artifacts
+
+# Copy source code
+COPY indexer/src ./src
+COPY indexer/tsconfig.json ./
 
 # Build TypeScript
 RUN pnpm run build
