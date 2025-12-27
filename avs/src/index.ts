@@ -40,17 +40,22 @@ if (!DELEGATION_MANAGER_ADDRESS) {
 	console.warn("⚠️  EIGENLAYER_DELEGATION_MANAGER not set. Operator weight checks will be skipped.");
 }
 
-if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
-	console.error("Missing Pinata credentials:");
-	console.error("PINATA_API_KEY, PINATA_SECRET_API_KEY");
-	console.error("Get your keys from: https://app.pinata.cloud/keys");
-	process.exit(1);
+// Pinata is optional - only needed for IPFS uploads
+let pinata: any = null;
+if (PINATA_API_KEY && PINATA_SECRET_API_KEY) {
+	try {
+		// Initialize Pinata SDK (v2 uses API key and secret)
+		// @ts-ignore - Pinata SDK initialization pattern
+		pinata = new pinataSDK(PINATA_API_KEY, PINATA_SECRET_API_KEY);
+		console.log(`[AVS] ✅ Pinata SDK initialized`);
+	} catch (error: any) {
+		console.warn(`[AVS] ⚠️  Failed to initialize Pinata: ${error.message}`);
+		pinata = null;
+	}
+} else {
+	console.warn(`[AVS] ⚠️  Pinata credentials not set. IPFS uploads will be disabled.`);
+	console.warn(`[AVS] Get your keys from: https://app.pinata.cloud/keys`);
 }
-
-// Initialize Pinata SDK (v2 uses API key and secret)
-// @ts-ignore - Pinata SDK initialization pattern
-const pinata = new pinataSDK(PINATA_API_KEY, PINATA_SECRET_API_KEY);
-console.log(`[AVS] ✅ Pinata SDK initialized`);
 
 // Initialize Gemini
 let genAI: GoogleGenerativeAI | null = null;
@@ -73,20 +78,23 @@ async function listGeminiModels() {
 	}
 }
 
-// Test authentication (will be awaited in startAVSService)
+// Test authentication (optional, only if Pinata is configured)
 async function verifyPinataAuth(): Promise<void> {
+	if (!pinata) {
+		return; // Skip if Pinata not configured
+	}
 	try {
 		const result = await pinata.testAuthentication();
 		if (result.authenticated) {
 			console.log(`[AVS] ✅ Pinata authentication successful`);
 		} else {
-			console.error("[AVS] ❌ Pinata authentication failed");
-			process.exit(1);
+			console.warn("[AVS] ⚠️  Pinata authentication failed. IPFS uploads will be disabled.");
+			pinata = null;
 		}
 	} catch (error: any) {
-		console.error("[AVS] ❌ Pinata authentication error:", error.message);
-		console.error("[AVS] Please verify your PINATA_API_KEY and PINATA_SECRET_API_KEY");
-		process.exit(1);
+		console.warn("[AVS] ⚠️  Pinata authentication error:", error.message);
+		console.warn("[AVS] IPFS uploads will be disabled.");
+		pinata = null;
 	}
 }
 
@@ -234,8 +242,14 @@ interface VerificationRequest {
 /**
  * Upload data to IPFS via Pinata and return CID
  * Uses real IPFS upload with Pinata pinning - no mocks or fake data
+ * Returns empty string if Pinata is not configured
  */
 async function uploadToIPFS(data: string | Uint8Array): Promise<string> {
+	if (!pinata) {
+		console.warn("[AVS] ⚠️  Pinata not configured. Skipping IPFS upload.");
+		return ""; // Return empty string if Pinata not available
+	}
+
 	try {
 		// Convert string to Buffer if needed
 		const dataBuffer = typeof data === "string" 
@@ -268,7 +282,8 @@ async function uploadToIPFS(data: string | Uint8Array): Promise<string> {
 		return cid;
 	} catch (error) {
 		console.error("[AVS] ❌ Pinata IPFS upload failed:", error);
-		throw new Error(`Failed to upload to Pinata IPFS: ${error instanceof Error ? error.message : String(error)}`);
+		console.warn("[AVS] ⚠️  Continuing without IPFS upload.");
+		return ""; // Return empty string on error instead of throwing
 	}
 }
 
