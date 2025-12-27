@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { db, initSchema } from "./db.js";
 import { runIndexer } from "./indexer.js";
+import { scanHistoricalMarkets } from "./historical-scan.js";
 
 dotenv.config();
 
@@ -248,6 +249,32 @@ app.get("/adapter-requests/:requestId", (req: Request, res: Response) => {
 		const row = db.prepare(`SELECT * FROM adapter_requests WHERE lower(requestId)=?`).get(requestId);
 		if (!row) return res.status(404).json({ error: "not found" });
 		res.json(row);
+	} catch (err) {
+		res.status(500).json({ error: String(err) });
+	}
+});
+
+// Historical scan endpoint - scans blockchain for missing markets
+app.post("/scan", async (req: Request, res: Response) => {
+	try {
+		const fromBlock = req.body.fromBlock 
+			? parseInt(req.body.fromBlock) 
+			: (process.env.SCAN_FROM_BLOCK ? parseInt(process.env.SCAN_FROM_BLOCK) : 0);
+		
+		res.json({ 
+			message: "Historical scan started", 
+			fromBlock,
+			note: "Check logs for progress. This may take a few minutes."
+		});
+		
+		// Run scan in background (don't block response)
+		scanHistoricalMarkets(fromBlock, "latest")
+			.then((count) => {
+				console.log(`Historical scan complete. Indexed ${count} markets.`);
+			})
+			.catch((error) => {
+				console.error("Historical scan failed:", error);
+			});
 	} catch (err) {
 		res.status(500).json({ error: String(err) });
 	}
