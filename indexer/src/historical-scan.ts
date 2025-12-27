@@ -47,11 +47,36 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 	const currentBlock = toBlock === "latest" ? await provider.getBlockNumber() : toBlock;
 	console.log(`Current block: ${currentBlock}, scanning from ${fromBlock}`);
 
-	// Query MarketDeployed events
-	const filter = factory.filters.MarketDeployed();
-	const events = await factory.queryFilter(filter, fromBlock, currentBlock);
+	// RPC providers limit block range (usually 50,000 blocks)
+	// Split scan into chunks to avoid "exceed maximum block range" error
+	const MAX_BLOCK_RANGE = 45000; // Use slightly less than 50k to be safe
+	const allEvents: any[] = [];
+	let scanFrom = fromBlock;
 
-	console.log(`Found ${events.length} MarketDeployed events`);
+	console.log(`Scanning in chunks of ${MAX_BLOCK_RANGE} blocks...`);
+
+	while (scanFrom <= currentBlock) {
+		const scanTo = Math.min(scanFrom + MAX_BLOCK_RANGE - 1, currentBlock);
+		console.log(`Scanning blocks ${scanFrom} to ${scanTo}...`);
+
+		try {
+			const filter = factory.filters.MarketDeployed();
+			const chunkEvents = await factory.queryFilter(filter, scanFrom, scanTo);
+			allEvents.push(...chunkEvents);
+			console.log(`Found ${chunkEvents.length} events in this chunk (total: ${allEvents.length})`);
+		} catch (error: any) {
+			console.error(`Error scanning blocks ${scanFrom}-${scanTo}:`, error.message);
+			// Continue to next chunk even if one fails
+		}
+
+		scanFrom = scanTo + 1;
+		
+		// Small delay to avoid rate limiting
+		await new Promise(resolve => setTimeout(resolve, 100));
+	}
+
+	const events = allEvents;
+	console.log(`Found ${events.length} MarketDeployed events total`);
 
 	for (const event of events) {
 		try {
