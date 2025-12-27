@@ -119,22 +119,7 @@ export async function scanHistoricalMarkets(fromBlock: number, toBlock: number |
 	return events.length;
 }
 
-// If run directly, scan from a reasonable starting point
-// ES module equivalent of require.main === module
-// Check if this file is being run directly (not imported)
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('historical-scan.js')) {
-	const FROM_BLOCK = process.env.SCAN_FROM_BLOCK 
-		? parseInt(process.env.SCAN_FROM_BLOCK) 
-		: 0; // Default: scan from block 0 (or set to Factory deployment block)
-
-	scanHistoricalMarkets(FROM_BLOCK, "latest")
-		.then((count) => {
-			console.log(`Successfully indexed ${count} markets`);
-			process.exit(0);
-		})
-		.catch((error) => {
-			console.error("Historical scan failed:", error);
-			process.exit(1);
-		});
-}
+// Note: This file is imported by server.ts, so we don't run it directly
+// If you need to run it standalone, use: node dist/historical-scan.js
+// But since we're using ES modules, that check is removed to avoid import errors
 
