@@ -642,8 +642,13 @@ async function startAVSService() {
 	
 	console.log(`[AVS] Listening for VerificationRequested events on ${ADAPTER_ADDRESS}...`);
 
-	// Recover missed requests
-	await recoverMissedRequests(adapter, wallet, provider);
+	// Recover missed requests (non-blocking - failures won't stop service)
+	try {
+		await recoverMissedRequests(adapter, wallet, provider);
+	} catch (error: any) {
+		console.warn(`[AVS] ⚠️  Could not recover missed requests:`, error.message);
+		console.warn(`[AVS] Service will continue - will process new requests only.`);
+	}
 	
 	// Listen for VerificationRequested events
 	adapter.on("VerificationRequested", async (requestId: string, requester: string, marketRef: string, data: string, event: any) => {
