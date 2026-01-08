@@ -190,6 +190,8 @@ class MarketWatcher {
 		}
 	}
 }
+
+if (!RPC_URL || !ADAPTER_ADDRESS || !AVS_PRIVATE_KEY) {
 	console.error("Missing required environment variables:");
 	console.error("SEPOLIA_RPC_URL, ADAPTER_ADDRESS, AVS_PRIVATE_KEY");
 	process.exit(1);
