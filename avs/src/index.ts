@@ -250,11 +250,17 @@ async function verifyPinataAuth(): Promise<void> {
 			console.log(`[AVS] ✅ Pinata authentication successful`);
 		} else {
 			console.warn("[AVS] ⚠️  Pinata authentication failed. IPFS uploads will be disabled.");
+			console.warn("[AVS] 💡 Check your PINATA_API_KEY and PINATA_SECRET_API_KEY at https://app.pinata.cloud/keys");
 			pinata = null;
 		}
 	} catch (error: any) {
-		console.warn("[AVS] ⚠️  Pinata authentication error:", error.message);
-		console.warn("[AVS] IPFS uploads will be disabled.");
+		const errorMsg = error.message || error.toString() || "Unknown error";
+		console.warn("[AVS] ⚠️  Pinata authentication error:", errorMsg);
+		if (errorMsg.includes("undefined") || errorMsg.includes("401") || errorMsg.includes("403")) {
+			console.warn("[AVS] 💡 Invalid Pinata credentials. Please verify your API keys.");
+			console.warn("[AVS] 💡 Get your keys from: https://app.pinata.cloud/keys");
+		}
+		console.warn("[AVS] IPFS uploads will be disabled. Service will continue without IPFS.");
 		pinata = null;
 	}
 }
@@ -560,21 +566,39 @@ async function processRequest(
 				);
 				weight = await delegationManager.operatorShares(signer.address, ADAPTER_ADDRESS);
 			} catch (error: any) {
-
-				console.warn(`[AVS] ⚠️  Failed to query operator weight from DelegationManager:`, error.message);
+				const errorMsg = error.message || error.toString() || "Unknown error";
+				console.warn(`[AVS] ⚠️  Failed to query operator weight from DelegationManager: ${errorMsg}`);
 				// Fallback: check if operator is registered via adapter
-				const isRegistered = await adapter.isOperatorRegistered(signer.address);
-				if (!isRegistered) {
-					console.warn(`[AVS] ⚠️  Operator ${signer.address} is not registered to this AVS. Skipping attestation.`);
+				try {
+					const isRegistered = await adapter.isOperatorRegistered(signer.address);
+					if (!isRegistered) {
+						console.warn(`[AVS] ⚠️  Operator ${signer.address} is not registered to this AVS. Skipping attestation.`);
+						console.warn(`[AVS] 💡 Register operator to process verification requests.`);
+						return;
+					}
+					// If registered but can't get weight, proceed with weight = 0 (will be checked on-chain)
+				} catch (regError: any) {
+					const regErrorMsg = regError.message || regError.toString() || "Unknown error";
+					console.warn(`[AVS] ⚠️  Could not check operator registration: ${regErrorMsg}`);
+					console.warn(`[AVS] ⚠️  Skipping attestation due to registration check failure.`);
+					console.warn(`[AVS] 💡 Ensure operator is registered to the AVS before processing requests.`);
 					return;
 				}
-				// If registered but can't get weight, proceed with weight = 0 (will be checked on-chain)
 			}
 		} else {
 			// Fallback: check if operator is registered via adapter
-			const isRegistered = await adapter.isOperatorRegistered(signer.address);
-			if (!isRegistered) {
-				console.warn(`[AVS] ⚠️  Operator ${signer.address} is not registered to this AVS. Skipping attestation.`);
+			try {
+				const isRegistered = await adapter.isOperatorRegistered(signer.address);
+				if (!isRegistered) {
+					console.warn(`[AVS] ⚠️  Operator ${signer.address} is not registered to this AVS. Skipping attestation.`);
+					console.warn(`[AVS] 💡 Register operator to process verification requests.`);
+					return;
+				}
+			} catch (error: any) {
+				const errorMsg = error.message || error.toString() || "Unknown error";
+				console.warn(`[AVS] ⚠️  Could not check operator registration: ${errorMsg}`);
+				console.warn(`[AVS] ⚠️  Skipping attestation due to registration check failure.`);
+				console.warn(`[AVS] 💡 Ensure operator is registered to the AVS before processing requests.`);
 				return;
 			}
 		}
@@ -680,7 +704,22 @@ async function processRequest(
 			console.log(`[AVS] ⏳ Quorum not yet reached. Yes: ${yesWeight}, No: ${noWeight}, Required: ${requiredWeight}`);
 		}
 	} catch (error: any) {
-		console.error(`[AVS] ❌ Error processing request ${request.requestId}:`, error.message);
+		const errorMsg = error.message || error.toString() || "Unknown error";
+		console.error(`[AVS] ❌ Error processing request ${request.requestId}: ${errorMsg}`);
+		
+		// Provide specific guidance based on error type
+		if (errorMsg.includes("Unauthorized") || errorMsg.includes("not registered")) {
+			console.error(`[AVS] 💡 Operator registration issue detected.`);
+			console.error(`[AVS] 💡 Ensure operator ${signer.address} is registered to the AVS.`);
+		} else if (errorMsg.includes("no stake") || errorMsg.includes("weight") || errorMsg.includes("stake")) {
+			console.error(`[AVS] 💡 Operator stake/weight issue detected.`);
+			console.error(`[AVS] 💡 Ensure operator has stake delegated to this AVS.`);
+		} else if (errorMsg.includes("revert") || errorMsg.includes("CALL_EXCEPTION")) {
+			console.error(`[AVS] 💡 Contract call failed. This may indicate:`);
+			console.error(`[AVS]    - Operator not registered or has no stake`);
+			console.error(`[AVS]    - Invalid request ID or request already fulfilled`);
+			console.error(`[AVS]    - Contract state issue (check AVS ID is set)`);
+		}
 	}
 }
 
@@ -766,14 +805,27 @@ async function startAVSService() {
 		if (!isRegistered) {
 			console.warn(`[AVS] ⚠️  Operator ${wallet.address} is not registered to this AVS!`);
 			console.warn("[AVS] Service will continue, but operator must be registered to process requests.");
-			console.warn("[AVS] Register operator by calling the adapter contract's registerOperator function.");
+			console.warn("[AVS] 💡 To register operator:");
+			console.warn(`[AVS]    1. Ensure AVS is registered with EigenLayer AllocationManager`);
+			console.warn(`[AVS]    2. Register operator via AllocationManager.registerOperatorToAVS()`);
+			console.warn(`[AVS]    3. Or use the adapter's registration function if available`);
 		} else {
 			console.log(`[AVS] ✅ Operator registered to AVS: ${wallet.address}`);
 		}
 	} catch (error: any) {
-		console.warn(`[AVS] ⚠️  Could not verify operator registration: ${error.message}`);
+		const errorMsg = error.message || error.toString() || "Unknown error";
+		console.warn(`[AVS] ⚠️  Could not verify operator registration: ${errorMsg}`);
+		
+		// Provide specific guidance based on error type
+		if (errorMsg.includes("missing revert data") || errorMsg.includes("CALL_EXCEPTION")) {
+			console.warn("[AVS] 💡 This usually means:");
+			console.warn(`[AVS]    - Operator is not registered to the AVS`);
+			console.warn(`[AVS]    - AVS ID not set on adapter (call setAVSId() first)`);
+			console.warn(`[AVS]    - Contract function may not exist or contract not deployed`);
+		}
+		
 		console.warn("[AVS] Service will continue, but operator registration status is unknown.");
-		console.warn("[AVS] Make sure the operator is registered to process requests.");
+		console.warn("[AVS] Attestations may fail if operator is not properly registered.");
 	}
 	
 	// Check operator weight from DelegationManager
@@ -797,7 +849,15 @@ async function startAVSService() {
 			const totalWeight = await adapter.getTotalOperatorWeight();
 			console.log(`[AVS] Total AVS operator weight: ${totalWeight.toString()}`);
 		} catch (error: any) {
-			console.warn(`[AVS] ⚠️  Could not query total operator weight:`, error.message);
+			const errorMsg = error.message || error.toString() || "Unknown error";
+			console.warn(`[AVS] ⚠️  Could not query total operator weight: ${errorMsg}`);
+			
+			if (errorMsg.includes("missing revert data") || errorMsg.includes("CALL_EXCEPTION")) {
+				console.warn("[AVS] 💡 This may indicate:");
+				console.warn(`[AVS]    - No operators registered to this AVS yet`);
+				console.warn(`[AVS]    - AVS ID not set on adapter contract`);
+				console.warn(`[AVS]    - Contract function may not be available`);
+			}
 		}
 	}
 	
@@ -805,11 +865,15 @@ async function startAVSService() {
 
 	// Start Keeper Service
 	if (FACTORY_ADDRESS) {
+		console.log(`[Keeper] 🛡️  Starting Market Watcher with factory: ${FACTORY_ADDRESS}`);
 		const watcher = new MarketWatcher(provider, wallet, FACTORY_ADDRESS);
 		// Start watcher without awaiting to allow AVS service to proceed
 		watcher.start().catch(err => console.error("[Keeper] Fatal error:", err));
 	} else {
 		console.warn("[Keeper] ⚠️  FACTORY_ADDRESS not set. Keeper service disabled.");
+		console.warn("[Keeper] 💡 To enable automated market resolution:");
+		console.warn(`[Keeper]    Set FACTORY_ADDRESS or MARKET_FACTORY_ADDRESS environment variable`);
+		console.warn(`[Keeper]    The Keeper will automatically close and resolve markets when they end`);
 	}
 
 	// Recover missed requests (non-blocking - failures won't stop service)
